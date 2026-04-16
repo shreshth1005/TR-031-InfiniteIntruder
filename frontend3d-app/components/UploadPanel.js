@@ -14,13 +14,39 @@ export default function UploadPanel({ setAnalysisData, setUploadedFile }) {
     setFileName(file.name);
     setLoading(true);
 
-    const res = await fetch("/data/sample-output.json");
-    const data = await res.json();
+    const extractedClauses = [
+      {
+        clause_id: "Clause 1.1",
+        text: "The client must make payment within 30 days of invoice receipt."
+      },
+      {
+        clause_id: "Clause 2.1",
+        text: "The vendor shall deliver the services as soon as possible."
+      },
+      {
+        clause_id: "Clause 3.1",
+        text: "Either party may terminate the agreement."
+      }
+    ];
 
-    setTimeout(() => {
+    try {
+      const response = await fetch("http://127.0.0.1:8000/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          clauses: extractedClauses
+        })
+      });
+
+      const data = await response.json();
       setAnalysisData(data);
+    } catch (error) {
+      console.error("Backend connection error:", error);
+    } finally {
       setLoading(false);
-    }, 1800);
+    }
   };
 
   return (
