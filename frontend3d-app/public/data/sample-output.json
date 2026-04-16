@@ -17,7 +17,7 @@
     {
       "clause_id": "Clause 4.2",
       "party": "Vendor",
-      "obligation": "Deliver software updates",
+      "obligation": "Deliver software updates quarterly",
       "deadline": "Quarterly",
       "risk_level": "Low"
     }
@@ -27,14 +27,14 @@
       "clause_id": "Clause 3.2",
       "issue": "Missing penalty clause",
       "severity": "High",
-      "description": "The agreement defines delivery obligations but does not specify any penalty for delay."
+      "description": "The agreement defines delivery obligations but no penalty for delay."
     },
     {
       "clause_id": "Clause 5.1",
       "issue": "Ambiguous deadline",
       "severity": "Medium",
-      "description": "The phrase 'as soon as possible' is vague and not legally precise."
+      "description": "The phrase 'as soon as possible' is vague and legally weak."
     }
   ],
-  "summary": "The contract contains three key obligations and two anomalies. One high-risk issue is the missing penalty clause for delayed delivery."
+  "summary": "The contract contains multiple obligations and two notable anomalies. The highest-risk issue is the missing penalty clause for delayed delivery."
 }
