@@ -7,47 +7,49 @@ export default function UploadPanel({ setAnalysisData, setUploadedFile }) {
   const [loading, setLoading] = useState(false);
 
   const handleUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const file = e.target.files[0];
+  if (!file) return;
 
-    setUploadedFile(file);
-    setFileName(file.name);
-    setLoading(true);
+  setUploadedFile(file);
+  setFileName(file.name);
+  setLoading(true);
 
-    const extractedClauses = [
-      {
-        clause_id: "Clause 1.1",
-        text: "The client must make payment within 30 days of invoice receipt."
+  try {
+    // STEP 1: Send PDF to backend
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const backendRes = await fetch("http://127.0.0.1:5000/extract", {
+      method: "POST",
+      body: formData,
+    });
+
+    const backendData = await backendRes.json();
+
+    console.log("Extracted Clauses:", backendData);
+
+    // STEP 2: Send clauses to intelligence API
+    const intelRes = await fetch("http://127.0.0.1:8000/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-      {
-        clause_id: "Clause 2.1",
-        text: "The vendor shall deliver the services as soon as possible."
-      },
-      {
-        clause_id: "Clause 3.1",
-        text: "Either party may terminate the agreement."
-      }
-    ];
+      body: JSON.stringify(backendData),
+    });
 
-    try {
-      const response = await fetch("http://127.0.0.1:8000/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          clauses: extractedClauses
-        })
-      });
+    const finalData = await intelRes.json();
 
-      const data = await response.json();
-      setAnalysisData(data);
-    } catch (error) {
-      console.error("Backend connection error:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    console.log("Final Analysis:", finalData);
+
+    // STEP 3: Update UI
+    setAnalysisData(finalData);
+
+  } catch (error) {
+    console.error("Error:", error);
+  }
+
+  setLoading(false);
+};
 
   return (
     <div className="legal-card rounded-3xl p-8">
