@@ -7,90 +7,81 @@ export default function UploadPanel({ setAnalysisData, setUploadedFile }) {
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-
-    setUploadedFile(file);
-    setFileName(file.name);
-    setStatusMessage("File selected successfully. Click Analyze Contract.");
-  };
-
   const handleAnalyze = async () => {
-    const input = document.getElementById("contract-file-input");
-    const file = input && input.files && input.files[0];
+  const input = document.getElementById("contract-file-input");
+  const file = input && input.files && input.files[0];
 
-    if (!file) {
-      alert("Please select a PDF file first.");
-      return;
+  if (!file) {
+    alert("Please select a PDF file first.");
+    return;
+  }
+
+  setLoading(true);
+  setStatusMessage("Uploading PDF to extraction service...");
+
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const backendRes = await fetch("https://tr031-backend.onrender.com/extract", {
+      method: "POST",
+      body: formData,
+    });
+
+    const backendText = await backendRes.text();
+    console.log("Backend raw response:", backendText);
+
+    if (!backendRes.ok) {
+      throw new Error("Backend extraction failed.");
     }
 
-    setLoading(true);
-    setStatusMessage("Uploading PDF to extraction service...");
-
+    let backendData;
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const backendRes = await fetch("https://tr031-backend.onrender.com/extract", {
-        method: "POST",
-        body: formData,
-      });
-
-      const backendText = await backendRes.text();
-      console.log("Backend raw response:", backendText);
-
-      if (!backendRes.ok) {
-        throw new Error("Backend extraction failed.");
-      }
-
-      let backendData;
-      try {
-        backendData = JSON.parse(backendText);
-      } catch {
-        throw new Error("Backend returned invalid JSON.");
-      }
-
-      if (!backendData.clauses || !Array.isArray(backendData.clauses)) {
-        throw new Error("Backend did not return valid clauses.");
-      }
-
-      setStatusMessage("Clauses extracted. Sending to intelligence service...");
-
-      const intelRes = await fetch("https://tr031-intelligence.onrender.com/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          clauses: backendData.clauses,
-        }),
-      });
-
-      const intelText = await intelRes.text();
-      console.log("Intelligence raw response:", intelText);
-
-      if (!intelRes.ok) {
-        throw new Error("Intelligence analysis failed.");
-      }
-
-      let finalData;
-      try {
-        finalData = JSON.parse(intelText);
-      } catch {
-        throw new Error("Intelligence returned invalid JSON.");
-      }
-
-      setAnalysisData(finalData);
-      setStatusMessage("Analysis complete.");
-    } catch (error) {
-      console.error("Pipeline error:", error);
-      setStatusMessage(`Error: ${error.message}`);
-      alert(`Upload failed: ${error.message}`);
-    } finally {
-      setLoading(false);
+      backendData = JSON.parse(backendText);
+    } catch {
+      throw new Error("Backend returned invalid JSON.");
     }
-  };
+
+    if (!backendData.clauses || !Array.isArray(backendData.clauses)) {
+      throw new Error("Backend did not return valid clauses.");
+    }
+
+    setStatusMessage("Clauses extracted. Sending to intelligence service...");
+
+    const intelRes = await fetch("https://tr031-intelligence.onrender.com/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        clauses: backendData.clauses,
+      }),
+    });
+
+    const intelText = await intelRes.text();
+    console.log("Intelligence raw response:", intelText);
+
+    if (!intelRes.ok) {
+      throw new Error("Intelligence analysis failed.");
+    }
+
+    let finalData;
+    try {
+      finalData = JSON.parse(intelText);
+    } catch {
+      throw new Error("Intelligence returned invalid JSON.");
+    }
+
+    setAnalysisData(finalData);
+    setStatusMessage("Analysis complete.");
+  } catch (error) {
+    console.error("Pipeline error:", error);
+    setStatusMessage(`Error: ${error.message}`);
+    alert(`Upload failed: ${error.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="legal-card rounded-3xl p-8">
