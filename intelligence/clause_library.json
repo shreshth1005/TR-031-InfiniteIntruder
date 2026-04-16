@@ -1,0 +1,42 @@
+{
+  "payment_clause": {
+    "text": "Payment must be made within 30 days of invoice receipt.",
+    "required": true,
+    "risk_hint": "Missing or vague payment timelines create financial ambiguity."
+  },
+  "liability_clause": {
+    "text": "Liability is limited to the total contract value.",
+    "required": true,
+    "risk_hint": "Unclear liability terms increase legal and financial exposure."
+  },
+  "termination_clause": {
+    "text": "Either party may terminate the agreement with 30 days written notice.",
+    "required": true,
+    "risk_hint": "Missing termination terms may cause exit disputes."
+  },
+  "confidentiality_clause": {
+    "text": "Both parties must keep all confidential information private.",
+    "required": true,
+    "risk_hint": "Lack of confidentiality clauses risks sensitive information leakage."
+  },
+  "delivery_clause": {
+    "text": "The vendor must deliver the services according to the agreed timeline.",
+    "required": true,
+    "risk_hint": "Missing delivery expectations reduce accountability."
+  },
+  "penalty_clause": {
+    "text": "A penalty will be imposed for delays in delivery.",
+    "required": false,
+    "risk_hint": "Absence of penalties weakens enforcement for missed obligations."
+  },
+  "renewal_clause": {
+    "text": "The agreement may be renewed upon mutual written consent.",
+    "required": false,
+    "risk_hint": "Unclear renewal rules may create continuity disputes."
+  },
+  "dispute_resolution_clause": {
+    "text": "Any dispute arising from this agreement shall be resolved through arbitration.",
+    "required": true,
+    "risk_hint": "Missing dispute resolution language can increase litigation risk."
+  }
+}

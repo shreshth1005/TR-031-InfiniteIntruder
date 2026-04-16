@@ -1,0 +1,16 @@
+{
+  "clauses": [
+    {
+      "clause_id": "Clause 1.1",
+      "text": "The client must make payment within 30 days of invoice receipt."
+    },
+    {
+      "clause_id": "Clause 2.1",
+      "text": "The vendor shall deliver the services as soon as possible."
+    },
+    {
+      "clause_id": "Clause 3.1",
+      "text": "Either party may terminate the agreement."
+    }
+  ]
+}
