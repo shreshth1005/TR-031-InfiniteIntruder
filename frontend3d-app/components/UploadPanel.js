@@ -31,7 +31,7 @@ export default function UploadPanel({ setAnalysisData, setUploadedFile }) {
       const formData = new FormData();
       formData.append("file", selectedFile);
 
-      const backendRes = await fetch("http://127.0.0.1:5000/extract", {
+      const backendRes = await fetch("https://tr031-backend.onrender.com/extract", {
         method: "POST",
         body: formData,
       });
@@ -50,7 +50,7 @@ export default function UploadPanel({ setAnalysisData, setUploadedFile }) {
 
       setStatusMessage("Clauses extracted. Sending to intelligence service...");
 
-      const intelRes = await fetch("http://127.0.0.1:8000/analyze", {
+      const intelRes = await fetch("https://tr031-intelligence.onrender.com/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
