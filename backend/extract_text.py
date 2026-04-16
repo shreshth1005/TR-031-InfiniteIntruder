@@ -2,11 +2,6 @@ import fitz  # PyMuPDF
 
 
 def extract_text_from_pdf(pdf_path: str) -> str:
-    """
-    Extracts text from a PDF file using PyMuPDF.
-    Returns full extracted text as a single string.
-    """
-
     doc = fitz.open(pdf_path)
     text = ""
 
@@ -16,5 +11,4 @@ def extract_text_from_pdf(pdf_path: str) -> str:
             text += page_text + "\n"
 
     doc.close()
-
     return text
