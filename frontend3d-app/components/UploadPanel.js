@@ -5,51 +5,92 @@ import { useState } from "react";
 export default function UploadPanel({ setAnalysisData, setUploadedFile }) {
   const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
 
-  const handleUpload = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+  const handleFileSelect = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
 
-  setUploadedFile(file);
-  setFileName(file.name);
-  setLoading(true);
+    setUploadedFile(file);
+    setFileName(file.name);
+    setStatusMessage("File selected successfully. Click Analyze Contract.");
+  };
 
-  try {
-    // STEP 1: Send PDF to backend
-    const formData = new FormData();
-    formData.append("file", file);
+  const handleAnalyze = async () => {
+    const input = document.getElementById("contract-file-input");
+    const file = input && input.files && input.files[0];
 
-    const backendRes = await fetch("http://127.0.0.1:5000/extract", {
-      method: "POST",
-      body: formData,
-    });
+    if (!file) {
+      alert("Please select a PDF file first.");
+      return;
+    }
 
-    const backendData = await backendRes.json();
+    setLoading(true);
+    setStatusMessage("Uploading PDF to extraction service...");
 
-    console.log("Extracted Clauses:", backendData);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
 
-    // STEP 2: Send clauses to intelligence API
-    const intelRes = await fetch("http://127.0.0.1:8000/analyze", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(backendData),
-    });
+      const backendRes = await fetch("https://tr031-backend.onrender.com/extract", {
+        method: "POST",
+        body: formData,
+      });
 
-    const finalData = await intelRes.json();
+      const backendText = await backendRes.text();
+      console.log("Backend raw response:", backendText);
 
-    console.log("Final Analysis:", finalData);
+      if (!backendRes.ok) {
+        throw new Error("Backend extraction failed.");
+      }
 
-    // STEP 3: Update UI
-    setAnalysisData(finalData);
+      let backendData;
+      try {
+        backendData = JSON.parse(backendText);
+      } catch {
+        throw new Error("Backend returned invalid JSON.");
+      }
 
-  } catch (error) {
-    console.error("Error:", error);
-  }
+      if (!backendData.clauses || !Array.isArray(backendData.clauses)) {
+        throw new Error("Backend did not return valid clauses.");
+      }
 
-  setLoading(false);
-};
+      setStatusMessage("Clauses extracted. Sending to intelligence service...");
+
+      const intelRes = await fetch("https://tr031-intelligence.onrender.com/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          clauses: backendData.clauses,
+        }),
+      });
+
+      const intelText = await intelRes.text();
+      console.log("Intelligence raw response:", intelText);
+
+      if (!intelRes.ok) {
+        throw new Error("Intelligence analysis failed.");
+      }
+
+      let finalData;
+      try {
+        finalData = JSON.parse(intelText);
+      } catch {
+        throw new Error("Intelligence returned invalid JSON.");
+      }
+
+      setAnalysisData(finalData);
+      setStatusMessage("Analysis complete.");
+    } catch (error) {
+      console.error("Pipeline error:", error);
+      setStatusMessage(`Error: ${error.message}`);
+      alert(`Upload failed: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="legal-card rounded-3xl p-8">
@@ -59,21 +100,25 @@ export default function UploadPanel({ setAnalysisData, setUploadedFile }) {
         </p>
         <h2 className="mt-2 text-2xl font-semibold">Upload Contract</h2>
         <p className="mt-3 text-sm leading-6 text-slate-400">
-          Upload a legal agreement in PDF format to extract obligations,
-          identify anomalies, and generate a review summary for consulting and compliance workflows.
+          Step 1: Select a PDF. Step 2: Analyze the contract.
         </p>
       </div>
 
-      <label className="block cursor-pointer rounded-2xl border border-dashed border-slate-500/40 bg-slate-900/40 p-8 text-center transition hover:bg-slate-800/50">
+      <div className="rounded-2xl border border-dashed border-slate-500/40 bg-slate-900/40 p-8">
+        <p className="mb-4 text-lg font-medium text-slate-100">Step 1: Select PDF</p>
+
         <input
+          id="contract-file-input"
           type="file"
           accept=".pdf"
-          onChange={handleUpload}
-          className="hidden"
+          onChange={handleFileSelect}
+          className="block w-full rounded-lg border border-white/10 bg-slate-800 p-3 text-slate-100"
         />
-        <span className="text-lg font-medium text-slate-100">Upload Legal Document</span>
-        <p className="mt-2 text-sm text-slate-400">PDF only • Contract review ready</p>
-      </label>
+
+        <p className="mt-3 text-sm text-slate-400">
+          PDF only • Contract review ready
+        </p>
+      </div>
 
       {fileName && (
         <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -82,9 +127,20 @@ export default function UploadPanel({ setAnalysisData, setUploadedFile }) {
         </div>
       )}
 
-      {loading && (
-        <div className="mt-6 rounded-2xl border border-[#d4af37]/20 bg-[#d4af37]/10 p-4 text-sm text-[#f5d97b]">
-          Reviewing document and preparing structured analysis...
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={handleAnalyze}
+          disabled={loading}
+          className="w-full rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-6 py-3 text-lg font-medium text-slate-100 hover:bg-emerald-500/20 transition disabled:opacity-50"
+        >
+          {loading ? "Analyzing..." : "Step 2: Analyze Contract"}
+        </button>
+      </div>
+
+      {statusMessage && (
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
+          {statusMessage}
         </div>
       )}
     </div>

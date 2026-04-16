@@ -2,7 +2,7 @@
 
 export default function Header() {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-[#0b1120]/85 backdrop-blur-md">
+    <header className="fixed top-0 left-0 right-0 z-[200] border-b border-white/10 bg-[#0b1120]/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <div>
           <h1 className="text-xl font-semibold tracking-wide">LexSight AI</h1>
@@ -16,7 +16,10 @@ export default function Header() {
           <a href="#contact" className="hover:text-white transition">Contact</a>
         </nav>
 
-        <button className="rounded-full border border-[#d4af37]/40 bg-[#d4af37]/10 px-4 py-2 text-sm font-medium text-[#f5d97b] hover:bg-[#d4af37]/20 transition">
+        <button
+          type="button"
+          className="rounded-full border border-[#d4af37]/40 bg-[#d4af37]/10 px-4 py-2 text-sm font-medium text-[#f5d97b] hover:bg-[#d4af37]/20 transition"
+        >
           Request Demo
         </button>
       </div>
