@@ -12,7 +12,9 @@ class AnomalyEngine:
             "if needed",
             "when necessary",
             "from time to time",
-            "as applicable"
+            "as applicable",
+            "as appropriate",
+            "where possible"
         ]
 
         lowered = text.lower()
@@ -32,10 +34,12 @@ class AnomalyEngine:
             return "Buyer"
         if "seller" in lowered:
             return "Seller"
+        if "consultant" in lowered:
+            return "Consultant"
         return "Unspecified"
 
     def _extract_deadline(self, text: str):
-        match = re.search(r"(\d+)\s+(day|days|month|months|week|weeks)", text.lower())
+        match = re.search(r"(\d+)\s+(day|days|month|months|week|weeks|year|years)", text.lower())
         if match:
             return match.group(0)
 
@@ -45,12 +49,15 @@ class AnomalyEngine:
         if "monthly" in text.lower():
             return "Monthly"
 
+        if "annually" in text.lower():
+            return "Annually"
+
         return "Not clearly specified"
 
     def _risk_from_score(self, score: float):
-        if score >= 0.75:
+        if score >= 0.72:
             return "Low"
-        if score >= 0.55:
+        if score >= 0.50:
             return "Medium"
         return "High"
 
@@ -68,6 +75,7 @@ class AnomalyEngine:
     def detect_anomalies(self, input_clauses, similarity_results):
         anomalies = []
         matched_types = set()
+        anomaly_keys = set()
 
         for clause, similarity in zip(input_clauses, similarity_results):
             clause_id = clause["clause_id"]
@@ -77,46 +85,69 @@ class AnomalyEngine:
 
             matched_types.add(best_match)
 
-            if best_score < 0.55:
-                anomalies.append({
-                    "clause_id": clause_id,
-                    "issue": "Weak clause match",
-                    "severity": "High",
-                    "description": f"This clause does not align strongly with expected legal clause standards. Best match was '{best_match}' with low confidence."
-                })
+            # Only flag weak semantic alignment if score is genuinely poor
+            if best_score < 0.35:
+                key = (clause_id, "Weak clause match")
+                if key not in anomaly_keys:
+                    anomalies.append({
+                        "clause_id": clause_id,
+                        "issue": "Weak clause match",
+                        "severity": "High",
+                        "description": f"This clause does not align well with standard legal clause patterns. Best match was '{best_match}' with low confidence."
+                    })
+                    anomaly_keys.add(key)
 
-            elif best_score < 0.75:
-                anomalies.append({
-                    "clause_id": clause_id,
-                    "issue": "Moderate clause ambiguity",
-                    "severity": "Medium",
-                    "description": f"This clause partially matches '{best_match}' but may need clarification or stronger drafting."
-                })
+            elif 0.35 <= best_score < 0.50:
+                key = (clause_id, "Moderate clause ambiguity")
+                if key not in anomaly_keys:
+                    anomalies.append({
+                        "clause_id": clause_id,
+                        "issue": "Moderate clause ambiguity",
+                        "severity": "Medium",
+                        "description": f"This clause partially matches '{best_match}' but may require clearer legal drafting."
+                    })
+                    anomaly_keys.add(key)
 
             vague_term = self._contains_vague_language(text)
             if vague_term:
-                anomalies.append({
-                    "clause_id": clause_id,
-                    "issue": "Vague wording detected",
-                    "severity": "Medium",
-                    "description": f"The phrase '{vague_term}' is ambiguous and may weaken legal precision."
-                })
+                key = (clause_id, "Vague wording detected")
+                if key not in anomaly_keys:
+                    anomalies.append({
+                        "clause_id": clause_id,
+                        "issue": "Vague wording detected",
+                        "severity": "Low",
+                        "description": f"The phrase '{vague_term}' may reduce precision, but it is not automatically a major legal risk."
+                    })
+                    anomaly_keys.add(key)
 
-            if self._extract_deadline(text) == "Not clearly specified" and best_match in ["payment_clause", "delivery_clause", "termination_clause"]:
-                anomalies.append({
-                    "clause_id": clause_id,
-                    "issue": "Missing deadline",
-                    "severity": "High",
-                    "description": "This clause appears important but does not clearly define a deadline or timeline."
-                })
+            # Only selected clause types truly require explicit time language
+            if (
+                self._extract_deadline(text) == "Not clearly specified"
+                and best_match in ["payment_clause", "termination_clause", "delivery_clause"]
+                and best_score >= 0.50
+            ):
+                key = (clause_id, "Missing deadline")
+                if key not in anomaly_keys:
+                    anomalies.append({
+                        "clause_id": clause_id,
+                        "issue": "Missing deadline",
+                        "severity": "Medium",
+                        "description": "This clause appears operationally important but does not clearly define a deadline or timeline."
+                    })
+                    anomaly_keys.add(key)
 
-        for clause_type, clause_data in self.clause_library.items():
-            if clause_data["required"] and clause_type not in matched_types:
-                anomalies.append({
-                    "clause_id": f"Missing:{clause_type}",
-                    "issue": "Required clause missing",
-                    "severity": "High",
-                    "description": clause_data["risk_hint"]
-                })
+        # Missing required clauses should only be checked if the document had enough usable clauses
+        if len(input_clauses) >= 3:
+            for clause_type, clause_data in self.clause_library.items():
+                if clause_data["required"] and clause_type not in matched_types:
+                    key = (f"Missing:{clause_type}", "Required clause missing")
+                    if key not in anomaly_keys:
+                        anomalies.append({
+                            "clause_id": f"Missing:{clause_type}",
+                            "issue": "Required clause missing",
+                            "severity": "High",
+                            "description": clause_data["risk_hint"]
+                        })
+                        anomaly_keys.add(key)
 
         return anomalies

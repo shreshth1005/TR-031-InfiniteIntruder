@@ -47,7 +47,6 @@ def root():
 def analyze_contract(request: AnalyzeRequest):
     input_clauses = [clause.model_dump() for clause in request.clauses]
 
-    # SAFETY CHECK: if extraction failed or gave too little useful data
     if not input_clauses or len(input_clauses) < 2:
         return {
             "obligations": [],
@@ -56,7 +55,7 @@ def analyze_contract(request: AnalyzeRequest):
                     "clause_id": "System",
                     "issue": "Insufficient clause extraction",
                     "severity": "Medium",
-                    "description": "The document could not be parsed into enough meaningful clauses for reliable legal analysis. This may be caused by translation quality, OCR issues, or unsupported formatting."
+                    "description": "The document could not be parsed into enough meaningful clauses for reliable legal analysis."
                 }
             ],
             "summary": "The system could not extract enough meaningful clauses for reliable contract analysis."
@@ -66,6 +65,10 @@ def analyze_contract(request: AnalyzeRequest):
 
     obligations = []
     for clause, result in zip(input_clauses, similarity_results):
+        # Ignore extremely weak text fragments from becoming obligations
+        if result["best_score"] < 0.20:
+            continue
+
         obligation = anomaly_engine.build_obligation(
             clause_id=clause["clause_id"],
             text=clause["text"],
@@ -74,25 +77,21 @@ def analyze_contract(request: AnalyzeRequest):
         )
         obligations.append(obligation)
 
-    anomalies = anomaly_engine.detect_anomalies(input_clauses, similarity_results)
-
-    # Additional guard: if all obligations are very weak matches, return controlled message
-    strong_matches = [o for o in obligations if o["match_score"] >= 0.40]
-
-    if len(strong_matches) == 0:
+    if len(obligations) == 0:
         return {
-            "obligations": obligations,
+            "obligations": [],
             "anomalies": [
                 {
                     "clause_id": "System",
-                    "issue": "Low-confidence legal interpretation",
+                    "issue": "Low-confidence extraction",
                     "severity": "Medium",
-                    "description": "The system extracted text, but semantic alignment with the legal clause library was too weak for reliable anomaly analysis."
+                    "description": "The system processed the document, but the extracted text fragments were too weak for reliable obligation analysis."
                 }
             ],
-            "summary": "The document was processed, but the extracted clauses did not align strongly enough with the clause library for reliable legal analysis."
+            "summary": "The document was processed, but no reliable obligation clauses could be identified."
         }
 
+    anomalies = anomaly_engine.detect_anomalies(input_clauses, similarity_results)
     summary = generate_summary(obligations, anomalies)
 
     return {
